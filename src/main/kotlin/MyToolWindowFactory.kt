@@ -1,19 +1,21 @@
 package com.fedachkaa
 
+import com.fedachkaa.api.PhalconRagApiClient
+import com.fedachkaa.ui.MarkdownRenderer
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
-import javax.swing.JButton
 import java.awt.BorderLayout
-import java.awt.Dimension
-import com.intellij.openapi.application.ApplicationManager
-import com.fedachkaa.api.PhalconRagApiClient
+import javax.swing.BoxLayout
+import javax.swing.JButton
+import javax.swing.JEditorPane
 
 class MyToolWindowFactory : ToolWindowFactory {
     override fun shouldBeAvailable(project: Project) = true
@@ -26,6 +28,8 @@ class MyToolWindowFactory : ToolWindowFactory {
 
     class MyToolWindow {
         private val apiClient = PhalconRagApiClient()
+        private val markdownRenderer = MarkdownRenderer()
+
         private val content = JBPanel<JBPanel<*>>(BorderLayout(0, 8)).apply {
             border = JBUI.Borders.empty(10)
 
@@ -34,10 +38,11 @@ class MyToolWindowFactory : ToolWindowFactory {
                 MyMessageBundle.message("toolwindow.MyToolWindow.ask.button")
             )
 
-            val answerArea = JBTextArea().apply {
+            val answerPane = JEditorPane().apply {
+                contentType = "text/html"
                 isEditable = false
-                lineWrap = true
-                wrapStyleWord = true
+                isOpaque = false
+                border = null
             }
 
             val questionPanel = JBPanel<JBPanel<*>>(BorderLayout(8, 0)).apply {
@@ -45,15 +50,27 @@ class MyToolWindowFactory : ToolWindowFactory {
                 add(askButton, BorderLayout.EAST)
             }
 
-            val answerScrollPane = JBScrollPane(answerArea)
+            val sourcesPanel = JBPanel<JBPanel<*>>().apply {
+               layout = BoxLayout(this, BoxLayout.Y_AXIS)
+               border = JBUI.Borders.empty(8, 0, 0, 0)
+            }
+
+            val resultPanel = JBPanel<JBPanel<*>>(BorderLayout(0, 8)).apply {
+                add(JBScrollPane(answerPane), BorderLayout.CENTER)
+                add(sourcesPanel, BorderLayout.SOUTH)
+            }
 
             add(questionPanel, BorderLayout.NORTH)
-            add(answerScrollPane, BorderLayout.CENTER)
+            add(resultPanel, BorderLayout.CENTER)
 
             askButton.addActionListener {
                 val question = questionField.text
 
-                answerArea.text = "Loading..."
+                answerPane.text = "Loading..."
+                sourcesPanel.removeAll()
+                sourcesPanel.revalidate()
+                sourcesPanel.repaint()
+
                 askButton.isEnabled = false
 
                 ApplicationManager.getApplication().executeOnPooledThread {
@@ -61,26 +78,41 @@ class MyToolWindowFactory : ToolWindowFactory {
                         val response = apiClient.ask(question)
 
                         ApplicationManager.getApplication().invokeLater {
-                            val sourcesText = response.sources.joinToString("\n") { source ->
-                                "• ${source.file}" +
-                                    (source.method?.let { " — $it" } ?: "") +
-                                    (source.section?.let { " — $it" } ?: "")
-                            }
+                            answerPane.text = markdownRenderer.render(response.answer)
+                            answerPane.caretPosition = 0
 
-                            answerArea.text = buildString {
-                                append(response.answer)
+                            sourcesPanel.removeAll()
 
-                                if (response.sources.isNotEmpty()) {
-                                    append("\n\nSources:\n")
-                                    append(sourcesText)
+                            if (response.sources.isNotEmpty()) {
+                                sourcesPanel.add(
+                                    JBLabel("Sources")
+                                )
+
+                                response.sources.forEach { source ->
+                                    val text = buildString {
+                                        append(source.file)
+
+                                        source.method?.let {
+                                            append(" — $it")
+                                        }
+
+                                        source.section?.let {
+                                            append(" — $it")
+                                        }
+                                    }
+
+                                    sourcesPanel.add(JBLabel("• $text"))
                                 }
                             }
+
+                            sourcesPanel.revalidate()
+                            sourcesPanel.repaint()
 
                             askButton.isEnabled = true
                         }
                     } catch (e: Exception) {
                         ApplicationManager.getApplication().invokeLater {
-                            answerArea.text = "Error: ${e.message}"
+                            answerPane.text = "Error: ${e.message}"
                             askButton.isEnabled = true
                         }
                     }

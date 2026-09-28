@@ -8,7 +8,7 @@ plugins {
 
 dependencies {
     implementation("com.google.code.gson:gson:2.13.2")
-
+    implementation("org.commonmark:commonmark:0.27.1")
     testImplementation(libs.junit)
 
     intellijPlatform {

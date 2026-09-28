@@ -5,8 +5,11 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import com.fedachkaa.config.PhalconRagConfig
 
-class PhalconRagApiClient {
+class PhalconRagApiClient (
+    private val baseUrl: String = PhalconRagConfig.API_BASE_URL
+) {
     private val gson = Gson()
     private val httpClient = HttpClient.newHttpClient()
 
@@ -15,7 +18,7 @@ class PhalconRagApiClient {
         val json = gson.toJson(request)
 
         val httpRequest = HttpRequest.newBuilder()
-            .uri(URI.create("http://127.0.0.1:8000/api/v1/ask"))
+            .uri(URI.create("$baseUrl/api/v1/ask"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build()

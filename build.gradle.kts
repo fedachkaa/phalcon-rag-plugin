@@ -12,7 +12,7 @@ dependencies {
     testImplementation(libs.junit)
 
     intellijPlatform {
-        intellijIdea("2025.3.6.1")
+        phpstorm("2026.2.3")
         testFramework(TestFrameworkType.Platform)
     }
 }

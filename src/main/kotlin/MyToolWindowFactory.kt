@@ -1,8 +1,11 @@
 package com.fedachkaa
 
 import com.fedachkaa.api.PhalconRagApiClient
+import com.fedachkaa.api.SourceUrlBuilder
 import com.fedachkaa.ui.MarkdownRenderer
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -17,29 +20,33 @@ import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JEditorPane
-import com.fedachkaa.api.SourceUrlBuilder
-import com.intellij.ide.BrowserUtil
 
 class MyToolWindowFactory : ToolWindowFactory {
     override fun shouldBeAvailable(project: Project) = true
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val myToolWindow = MyToolWindow()
+        val myToolWindow = MyToolWindow(project)
         val content = ContentFactory.getInstance().createContent(myToolWindow.getContent(), null, false)
         toolWindow.contentManager.addContent(content)
     }
 
-    class MyToolWindow {
+    class MyToolWindow(private val project: Project) {
         private val apiClient = PhalconRagApiClient()
         private val markdownRenderer = MarkdownRenderer()
+        private var selectedContext: String? = null
 
         private val content = JBPanel<JBPanel<*>>(BorderLayout(0, 8)).apply {
             border = JBUI.Borders.empty(10)
 
             val questionField = JBTextField()
+
             val askButton = JButton(
                 MyMessageBundle.message("toolwindow.MyToolWindow.ask.button")
             )
+
+            val addSelectionButton = JButton("Add Selection")
+
+            val contextLabel = JBLabel()
 
             val answerPane = JEditorPane().apply {
                 contentType = "text/html"
@@ -48,9 +55,19 @@ class MyToolWindowFactory : ToolWindowFactory {
                 border = null
             }
 
-            val questionPanel = JBPanel<JBPanel<*>>(BorderLayout(8, 0)).apply {
+            val actionsPanel = JBPanel<JBPanel<*>>().apply {
+                add(addSelectionButton)
+                add(askButton)
+            }
+
+            val inputPanel = JBPanel<JBPanel<*>>(BorderLayout(8, 0)).apply {
                 add(questionField, BorderLayout.CENTER)
-                add(askButton, BorderLayout.EAST)
+                add(actionsPanel, BorderLayout.EAST)
+            }
+
+            val questionPanel = JBPanel<JBPanel<*>>(BorderLayout(0, 4)).apply {
+                add(inputPanel, BorderLayout.NORTH)
+                add(contextLabel, BorderLayout.SOUTH)
             }
 
             val sourcesPanel = JBPanel<JBPanel<*>>().apply {
@@ -67,72 +84,101 @@ class MyToolWindowFactory : ToolWindowFactory {
             add(resultPanel, BorderLayout.CENTER)
 
             askButton.addActionListener {
-                val question = questionField.text
+                handleAsk(questionField, answerPane, sourcesPanel, askButton)
+            }
 
-                answerPane.text = "Loading..."
-                sourcesPanel.removeAll()
-                sourcesPanel.revalidate()
-                sourcesPanel.repaint()
+            addSelectionButton.addActionListener {
+                handleAddSelection(contextLabel)
+            }
+        }
 
-                askButton.isEnabled = false
+        private fun handleAsk(
+            questionField: JBTextField,
+            answerPane: JEditorPane,
+            sourcesPanel: JBPanel<*>,
+            askButton: JButton
+        ) {
+            val question = questionField.text
 
-                ApplicationManager.getApplication().executeOnPooledThread {
-                    try {
-                        val response = apiClient.ask(question)
+            answerPane.text = "Loading..."
+            sourcesPanel.removeAll()
+            sourcesPanel.revalidate()
+            sourcesPanel.repaint()
 
-                        ApplicationManager.getApplication().invokeLater {
-                            answerPane.text = markdownRenderer.render(response.answer)
-                            answerPane.caretPosition = 0
+            askButton.isEnabled = false
 
-                            sourcesPanel.removeAll()
+            ApplicationManager.getApplication().executeOnPooledThread {
+                try {
+                    val response = apiClient.ask(
+                        question = question,
+                        context = selectedContext
+                    )
 
-                            if (response.sources.isNotEmpty()) {
-                                sourcesPanel.add(
-                                    JBLabel("Sources")
-                                )
+                    ApplicationManager.getApplication().invokeLater {
+                        answerPane.text = markdownRenderer.render(response.answer)
+                        answerPane.caretPosition = 0
 
-                                response.sources.forEach { source ->
-                                    val text = buildString {
-                                        append(source.file)
+                        sourcesPanel.removeAll()
 
-                                        source.method?.let {
-                                            append(" — $it")
-                                        }
+                        if (response.sources.isNotEmpty()) {
+                            sourcesPanel.add(JBLabel("Sources"))
 
-                                        source.section?.let {
-                                            append(" — $it")
-                                        }
+                            response.sources.forEach { source ->
+                                val text = buildString {
+                                    append(source.file)
+
+                                    source.method?.let {
+                                        append(" — $it")
                                     }
 
-                                    val url = SourceUrlBuilder.build(source)
-
-                                    if (url != null) {
-                                        val link = LinkLabel<Any>("• $text", null)
-
-                                        link.setListener({ _, _ ->
-                                            BrowserUtil.browse(url)
-                                        }, null)
-
-                                        sourcesPanel.add(link)
-                                    } else {
-                                        sourcesPanel.add(JBLabel("• $text"))
+                                    source.section?.let {
+                                        append(" — $it")
                                     }
                                 }
+
+                                val url = SourceUrlBuilder.build(source)
+
+                                if (url != null) {
+                                    val link = LinkLabel<Any>("• $text", null)
+
+                                    link.setListener({ _, _ ->
+                                        BrowserUtil.browse(url)
+                                    }, null)
+
+                                    sourcesPanel.add(link)
+                                } else {
+                                    sourcesPanel.add(JBLabel("• $text"))
+                                }
                             }
-
-                            sourcesPanel.revalidate()
-                            sourcesPanel.repaint()
-
-                            askButton.isEnabled = true
                         }
-                    } catch (e: Exception) {
-                        ApplicationManager.getApplication().invokeLater {
-                            answerPane.text = "Error: ${e.message}"
-                            askButton.isEnabled = true
-                        }
+
+                        sourcesPanel.revalidate()
+                        sourcesPanel.repaint()
+
+                        askButton.isEnabled = true
+                    }
+                } catch (e: Exception) {
+                    ApplicationManager.getApplication().invokeLater {
+                        answerPane.text = "Error: ${e.message}"
+                        askButton.isEnabled = true
                     }
                 }
             }
+        }
+
+        private fun handleAddSelection(contextLabel: JBLabel) {
+            val editor = FileEditorManager.getInstance(project).selectedTextEditor
+            val selectedText = editor?.selectionModel?.selectedText
+
+            if (selectedText.isNullOrBlank()) {
+                contextLabel.text = "No code selected"
+                return
+            }
+
+            selectedContext = selectedText
+
+            val lineCount = selectedText.lines().size
+            contextLabel.text = "✓ $lineCount lines of code attached"
         }
 
         fun getContent(): JBPanel<JBPanel<*>> = content

@@ -3,7 +3,8 @@ package com.fedachkaa.api
 import com.google.gson.annotations.SerializedName
 
 data class AskRequest(
-    val question: String
+    val question: String,
+    val context: String? = null
 )
 
 data class SourceResponse(

@@ -10,12 +10,15 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.components.labels.LinkLabel
 import com.intellij.ui.content.ContentFactory
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JEditorPane
+import com.fedachkaa.api.SourceUrlBuilder
+import com.intellij.ide.BrowserUtil
 
 class MyToolWindowFactory : ToolWindowFactory {
     override fun shouldBeAvailable(project: Project) = true
@@ -101,7 +104,19 @@ class MyToolWindowFactory : ToolWindowFactory {
                                         }
                                     }
 
-                                    sourcesPanel.add(JBLabel("• $text"))
+                                    val url = SourceUrlBuilder.build(source)
+
+                                    if (url != null) {
+                                        val link = LinkLabel<Any>("• $text", null)
+
+                                        link.setListener({ _, _ ->
+                                            BrowserUtil.browse(url)
+                                        }, null)
+
+                                        sourcesPanel.add(link)
+                                    } else {
+                                        sourcesPanel.add(JBLabel("• $text"))
+                                    }
                                 }
                             }
 

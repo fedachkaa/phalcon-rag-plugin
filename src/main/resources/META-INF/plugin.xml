@@ -28,6 +28,12 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="MyToolWindow" factoryClass="com.fedachkaa.MyToolWindowFactory"
                     icon="AllIcons.Toolwindows.ToolWindowPalette"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.fedachkaa.settings.PhalconRagSettingsConfigurable"
+                id="com.fedachkaa.settings"
+                displayName="Phalcon RAG"/>
     </extensions>
     
 </idea-plugin>

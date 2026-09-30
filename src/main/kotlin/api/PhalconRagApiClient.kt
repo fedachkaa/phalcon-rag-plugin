@@ -6,14 +6,15 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import com.fedachkaa.config.PhalconRagConfig
+import com.fedachkaa.settings.PhalconRagSettings
 
-class PhalconRagApiClient (
-    private val baseUrl: String = PhalconRagConfig.API_BASE_URL
-) {
+class PhalconRagApiClient () {
     private val gson = Gson()
     private val httpClient = HttpClient.newHttpClient()
 
     fun ask(question: String, context: String? = null): AskResponse {
+        val baseUrl = PhalconRagSettings.getInstance().state.apiBaseUrl
+
         val request = AskRequest(question, context)
         val json = gson.toJson(request)
 

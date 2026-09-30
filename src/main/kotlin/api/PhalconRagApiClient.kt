@@ -14,7 +14,7 @@ class PhalconRagApiClient (
     private val httpClient = HttpClient.newHttpClient()
 
     fun ask(question: String, context: String? = null): AskResponse {
-        val request = AskRequest(question)
+        val request = AskRequest(question, context)
         val json = gson.toJson(request)
 
         val httpRequest = HttpRequest.newBuilder()

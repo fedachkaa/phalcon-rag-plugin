@@ -180,7 +180,6 @@ src/main/
 - The backend must be started and configured separately.
 - There is no chat history or streaming response UI.
 - Selected code remains attached until replaced; there is no dedicated clear button.
-- The plugin currently uses the generic tool-window name **Phalcon RAG**.
 - Source URL construction targets Phalcon **5.20** repositories; support for other framework versions is not implemented.
 - The current API client does not explicitly check HTTP status codes before parsing the response.
 

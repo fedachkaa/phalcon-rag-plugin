@@ -19,7 +19,7 @@ This plugin is the IDE client for the [Phalcon RAG backend](https://github.com/f
 
 See Phalcon RAG Assistant in action:
 
-https://github.com/user-attachments/assets/YOUR-VIDEO-ID
+https://github.com/user-attachments/assets/6614303c-7cce-4686-b5a4-38b705e1b134
 
 ## How It Works
 

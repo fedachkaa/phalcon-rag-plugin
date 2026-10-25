@@ -113,7 +113,7 @@ If you use the backend on AWS through an SSH tunnel, keep the tunnel open and us
 
 ### Ask a Question
 
-1. Open the **MyToolWindow** tool window in PhpStorm (the current registered tool-window name).
+1. Open the **Phalcon RAG** tool window in PhpStorm (the current registered tool-window name).
 2. Type a question, for example: **How does Phalcon's `getShared()` differ from `get()`?**
 3. Click **Ask**.
 4. Read the generated answer and inspect its sources.
@@ -180,7 +180,7 @@ src/main/
 - The backend must be started and configured separately.
 - There is no chat history or streaming response UI.
 - Selected code remains attached until replaced; there is no dedicated clear button.
-- The plugin currently uses the generic tool-window name **MyToolWindow**.
+- The plugin currently uses the generic tool-window name **Phalcon RAG**.
 - Source URL construction targets Phalcon **5.20** repositories; support for other framework versions is not implemented.
 - The current API client does not explicitly check HTTP status codes before parsing the response.
 
